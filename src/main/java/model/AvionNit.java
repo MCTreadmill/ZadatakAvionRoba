@@ -1,51 +1,98 @@
 package model;
 
+import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.dao.DaoManager;
+import com.j256.ormlite.jdbc.JdbcConnectionSource;
+import com.j256.ormlite.support.ConnectionSource;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 public class AvionNit extends Thread {
 
-    private int sifraAviona;
 
-    public AvionNit(int sifraAviona){
-        this.sifraAviona = sifraAviona;
+    public static volatile boolean dozvoljenoSletanje = true;
+    private Avion avion;
+
+    public AvionNit(Avion avion){
+        this.avion = avion;
     }
 
-    private void poleti(){
-        System.out.println("Avion " + sifraAviona + " je poleteo.");
+    public Avion getAvion() {
+        return avion;
+    }
 
+    public void setAvion(Avion avion) {
+        this.avion = avion;
+    }
+
+    public void run(){
+        System.out.println("Pocinju provere za avion " + avion.getId());
         try {
-            this.sleep(3000);
+            Random random = new Random();
+            long vreme = Math.round(random.nextDouble() * 2000);
+            this.sleep(vreme);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
+        System.out.println("Avion " + avion.getId() + " je spreman za poletanje i ceka dozvolu za poletanje.");
 
-    private void sleti(){
-        System.out.println("Avion " + sifraAviona + " trazi dozvolu za sletanje.");
         do{
             try {
-                // Svake sekudne proveravaj dozvolu za sletanje
                 this.sleep(1000);
-                if (Aerodrom.dozvoljenoSletanje){
-                    Aerodrom.dozvoljenoSletanje = false;
+                if (dozvoljenoSletanje){
+                    dozvoljenoSletanje = false;
 
-                    // Treba mu jedna sekunda da sleti
-                    System.out.println("Avion " + sifraAviona + " slece.");
-                    this.sleep(1000);
+                    System.out.println("Avion " + avion.getId() + " izlazi na pistu i polece.");
+                    this.sleep(2000);
 
-                    Aerodrom.dozvoljenoSletanje = true;
+                    dozvoljenoSletanje = true;
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        } while(!Aerodrom.dozvoljenoSletanje);
-
-
-        System.out.println("Avion " + sifraAviona + " je sleteo.");
+        } while(!dozvoljenoSletanje);
+        System.out.println("Avion " + avion.getId() + " je poleteo.");
     }
 
-    public void run() {
-        poleti();
-        sleti();
+    static Dao<Avion,Integer> avionDao;
+    public static void main(String[] args) {
+        ConnectionSource connectionSource = null;
+
+        try {
+            connectionSource = new JdbcConnectionSource("jdbc:sqlite:avionRoba.db");
+
+            avionDao = DaoManager.createDao(connectionSource, Avion.class);
+
+            List<AvionNit> listaAviona = new ArrayList<AvionNit>();
+
+            listaAviona.add(new AvionNit(avionDao.queryForId(1)));
+            listaAviona.add(new AvionNit(avionDao.queryForId(2)));
+
+            ArrayList<Thread> listaNiti = new ArrayList<>();
+
+            for (AvionNit avionNit : listaAviona){
+                Thread t = new Thread(avionNit);
+                listaNiti.add(t);
+                t.start();
+            }
+
+            for (Thread t : listaNiti){
+                try {
+                    t.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Svi avioni su poleteli");
     }
+
 }
 
 
