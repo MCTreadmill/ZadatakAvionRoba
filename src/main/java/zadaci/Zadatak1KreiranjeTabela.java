@@ -6,6 +6,7 @@ import com.j256.ormlite.table.TableUtils;
 import model.Avion;
 import model.Roba;
 
+import java.io.IOException;
 import java.sql.SQLException;
 
 
@@ -25,6 +26,14 @@ public class Zadatak1KreiranjeTabela {
 
         } catch (SQLException e) {
             e.printStackTrace();
+        } finally {
+            if (connectionSource != null) {
+                try {
+                    connectionSource.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
 
